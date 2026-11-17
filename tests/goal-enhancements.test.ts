@@ -36,6 +36,24 @@ describe("E1 goal history block", () => {
 		assert.match(block, /Recent events:/);
 		assert.match(block, /task_complete/);
 	});
+
+	it("reports the auditor model, duration and spend of the last audit", () => {
+		const goal = makeGoalRecord({ objective: "History test" });
+		const events = [
+			{ type: "audit_started", goalId: goal.id, auditId: "a1", provider: "deepseek", model: "deepseek-v4.1-flash", thinkingLevel: "high", at: "2026-08-05T10:00:00.000Z" },
+			{ type: "audit_result", goalId: goal.id, auditId: "a1", verdict: "approved", report: "verified", provider: "deepseek", model: "deepseek-v4.1-flash", thinkingLevel: "high", durationMs: 724_000, usage: { tokens: 47_200, cost: 0.041 }, at: "2026-08-05T10:12:04.000Z" },
+		];
+		const block = buildGoalHistoryBlock(goal, events as never);
+		assert.match(block, /Last audit: approved/);
+		assert.match(block, /Auditor: deepseek-v4\.1-flash:high/);
+		assert.match(block, /Duration: 12m04s/);
+		assert.match(block, /Spend: 47K \(47,200\) tokens · \$0\.041/);
+
+		// Older ledgers (no usage/duration) keep the plain verdict line only.
+		const bare = buildGoalHistoryBlock(goal, ledgerEvents(goal.id) as never);
+		assert.doesNotMatch(bare, /Spend:/);
+		assert.doesNotMatch(bare, /Duration:/);
+	});
 });
 
 describe("E6 sisyphus step progress", () => {

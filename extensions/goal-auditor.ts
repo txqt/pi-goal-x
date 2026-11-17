@@ -46,7 +46,10 @@ export interface GoalAuditorResult {
 	disapproved: boolean;
 	output: string;
 	model?: string;
+	provider?: string;
 	thinkingLevel?: ThinkingLevel;
+	/** The auditor's own spend, accumulated from its in-memory session. */
+	usage?: { tokens: number; cost: number };
 	error?: string;
 }
 
@@ -474,7 +477,14 @@ export async function runGoalCompletionAuditor(args: {
 		}
 		const output = outputParts.join("\n\n").trim();
 		const decision = parseAuditorDecision(output);
-		return { ...decision, output, model: modelLabel(model), thinkingLevel };
+		return {
+			...decision,
+			output,
+			model: modelLabel(model),
+			provider: model?.provider,
+			thinkingLevel,
+			...(usageTokens > 0 ? { usage: { tokens: usageTokens, cost: usageCost } } : {}),
+		};
 	} catch (error) {
 		const isAborted = args.signal?.aborted || (error instanceof Error && error.name === "AbortError");
 		return {

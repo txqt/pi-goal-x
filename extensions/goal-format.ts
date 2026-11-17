@@ -331,9 +331,20 @@ export function buildGoalHistoryBlock(goal: GoalRecord | null, ledgerEvents: Goa
 	if (!goal) return "";
 	const lines: string[] = [];
 	const audit = latestAuditorResultForGoal(ledgerEvents, goal.id);
- if (latestAuditForGoal(ledgerEvents, goal.id)?.type === "audit_started") lines.push("Latest audit: no recorded result.");
+	const latestAudit = latestAuditForGoal(ledgerEvents, goal.id);
+ if (latestAudit?.type === "audit_started") lines.push("Latest audit: no recorded result.");
 	if (audit) {
 		lines.push(`Last audit: ${audit.verdict} (${audit.at.slice(0, 10)}) — ${truncateText(audit.report, 90)}`);
+		// Spend of the audit itself: its session is in-memory, so this ledger
+		// entry is the only durable record of what the audit cost.
+		if (latestAudit?.type === "audit_result") {
+			const detail = [
+				latestAudit.model ? `Auditor: ${latestAudit.model}${latestAudit.thinkingLevel ? `:${latestAudit.thinkingLevel}` : ""}` : undefined,
+				latestAudit.durationMs !== undefined ? `Duration: ${formatDuration(Math.round(latestAudit.durationMs / 1000))}` : undefined,
+				latestAudit.usage ? `Spend: ${formatTokenValue(latestAudit.usage.tokens)} · $${latestAudit.usage.cost.toFixed(3)}` : undefined,
+			].filter(line => line !== undefined);
+			if (detail.length > 0) lines.push(`  ${detail.join(" · ")}`);
+		}
 	}
 	const recent = latestEventsForGoal(ledgerEvents, goal.id, 6);
 	if (recent.length > 0) {

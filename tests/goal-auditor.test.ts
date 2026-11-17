@@ -502,6 +502,8 @@ test("auditor spend accumulates from its own message usage onto progress", async
 		// The terminal progress emit keeps the total, so the widget can show the
 		// final spend while the audit settles.
 		assert.deepEqual(seen.at(-1), { tokens: 47_200, cost: 0.041 });
+		// The same total rides on the result so the ledger can record it.
+		assert.deepEqual(result.usage, { tokens: 47_200, cost: 0.041 });
 	} finally {
 		fs.rmSync(cwd, { recursive: true, force: true });
 	}

@@ -18,7 +18,7 @@ export type GoalLedgerEvent =
   | { type: "auditor_toggled"; goalId: string; enabled: boolean; at: string }
   | { type: "completion_requested"; goalId: string; summary?: string; at: string }
   | { type: "audit_started"; goalId: string; auditId?: string; provider?: string; model?: string; thinkingLevel?: string; at: string }
-  | { type: "audit_result"; goalId: string; auditId?: string; verdict: "approved" | "disapproved" | "error"; report: string; at: string }
+  | { type: "audit_result"; goalId: string; auditId?: string; verdict: "approved" | "disapproved" | "error"; report: string; provider?: string; model?: string; thinkingLevel?: string; durationMs?: number; usage?: { tokens: number; cost: number }; at: string }
   | { type: "audit_skipped"; goalId: string; auditId?: string; reason: "disabled" | "user_aborted"; provider?: string; model?: string; thinkingLevel?: string; at: string }
   | { type: "goal_completed"; goalId: string; archivePath?: string; at: string }
   | { type: "goal_archived"; goalId: string; archivePath: string; at: string }
@@ -718,7 +718,7 @@ function isValidLedgerEvent(value: unknown): value is GoalLedgerEvent {
     case "audit_started":
       return typeof obj.goalId === "string" && (obj.provider === undefined || typeof obj.provider === "string") && (obj.model === undefined || typeof obj.model === "string") && (obj.thinkingLevel === undefined || typeof obj.thinkingLevel === "string");
     case "audit_result":
-      return typeof obj.goalId === "string" && (obj.verdict === "approved" || obj.verdict === "disapproved" || obj.verdict === "error") && typeof obj.report === "string";
+      return typeof obj.goalId === "string" && (obj.verdict === "approved" || obj.verdict === "disapproved" || obj.verdict === "error") && typeof obj.report === "string" && (obj.provider === undefined || typeof obj.provider === "string") && (obj.model === undefined || typeof obj.model === "string") && (obj.thinkingLevel === undefined || typeof obj.thinkingLevel === "string") && (obj.durationMs === undefined || typeof obj.durationMs === "number") && (obj.usage === undefined || (typeof obj.usage === "object" && obj.usage !== null && typeof (obj.usage as { tokens?: unknown }).tokens === "number" && typeof (obj.usage as { cost?: unknown }).cost === "number"));
     case "audit_skipped":
       return typeof obj.goalId === "string" && (obj.reason === "disabled" || obj.reason === "user_aborted") && (obj.provider === undefined || typeof obj.provider === "string") && (obj.model === undefined || typeof obj.model === "string") && (obj.thinkingLevel === undefined || typeof obj.thinkingLevel === "string");
     case "goal_completed":

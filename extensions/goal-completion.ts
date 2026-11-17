@@ -154,7 +154,7 @@ export async function runGoalCompletionFlow(core: GoalCore, ctx: ExtensionContex
    return {content: [{type: "text", text: "Audit aborted — the goal remains active and work continues."}], details: goalDetails(core.state.goal)};
   }
   const verdict = auditor.approved ? "approved" : auditor.error ? "error" : "disapproved";
-  if (!settle({type: "audit_result", auditId, goalId: target.id, verdict, report: auditor.output || auditor.error || "Auditor produced no output.", at: nowIso()})) return persistenceError();
+  if (!settle({type: "audit_result", auditId, goalId: target.id, verdict, report: auditor.output || auditor.error || "Auditor produced no output.", provider: config.provider, model: config.model, thinkingLevel: config.thinkingLevel, durationMs: Date.now() - startedAt, ...(auditor.usage ? {usage: auditor.usage} : {}), at: nowIso()})) return persistenceError();
   core.setAuditResult(verdict, auditor.output || auditor.error || "Auditor produced no output.");
   if (!auditor.approved) {
    const text = ["Goal audit rejected.", "", "Goal completion rejected by independent auditor.", auditor.model ? `Auditor model: ${auditor.model}${auditor.thinkingLevel ? `:${auditor.thinkingLevel}` : ""}` : undefined, auditor.error ? `Auditor error: ${auditor.error}` : undefined, "", auditor.output || "Auditor produced no approval marker."].filter(line => line !== undefined).join("\n");
