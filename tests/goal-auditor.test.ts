@@ -462,3 +462,47 @@ test("resolveAuditorModel resolves explicit provider/model and falls back to the
 	} as never, {} as never);
 	assert.equal(unset.model, session);
 });
+
+test("auditor spend accumulates from its own message usage onto progress", async () => {
+	const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "pi-goal-auditor-test-"));
+	try {
+		let emit: (event: unknown) => void = () => {};
+		const messageEnd = (text: string, totalTokens: number, cost: number) => ({
+			type: "message_end",
+			message: { role: "assistant", content: [{ type: "text", text }], usage: { totalTokens, cost: { total: cost } } },
+		});
+		const mockSession = {
+			abort: () => {},
+			subscribe: (handler: (event: unknown) => void) => {
+				emit = handler;
+				return () => {};
+			},
+			prompt: async () => {
+				emit(messageEnd("Checking the workspace.", 30_000, 0.02));
+				emit(messageEnd("Everything verified.\n<approved/>", 17_200, 0.021));
+			},
+		};
+		const seen: Array<{ tokens: number; cost: number }> = [];
+
+		const result = await runGoalCompletionAuditor({
+			ctx: { cwd, model: undefined } as any,
+			goal: goal(),
+			detailedSummary: "test",
+			createSession: async () => ({ session: mockSession }) as any,
+			onProgress: (progress) => {
+				if (progress.usage) seen.push(progress.usage);
+			},
+		});
+
+		assert.equal(result.approved, true);
+		assert.deepEqual(seen.slice(0, 2), [
+			{ tokens: 30_000, cost: 0.02 },
+			{ tokens: 47_200, cost: 0.041 },
+		], "usage accumulates across auditor messages");
+		// The terminal progress emit keeps the total, so the widget can show the
+		// final spend while the audit settles.
+		assert.deepEqual(seen.at(-1), { tokens: 47_200, cost: 0.041 });
+	} finally {
+		fs.rmSync(cwd, { recursive: true, force: true });
+	}
+});

@@ -118,6 +118,8 @@ export interface AuditorWidgetProgress {
 	percentage?: number;
 	/** §15: auditor identity (provider/model) for the audit dashboard header. */
 	auditorLabel?: string;
+	/** Cumulative auditor spend so far (tokens + cost). */
+	usage?: { tokens: number; cost: number };
 }
 
 export interface GoalWidgetOptions {

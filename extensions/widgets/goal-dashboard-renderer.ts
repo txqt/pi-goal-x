@@ -28,6 +28,7 @@ import {
 	type TaskListViewport,
 } from "./goal-dashboard-model.ts";
 import type { GoalActivityItem } from "../goal-activity.ts";
+import { formatAuditUsage } from "./auditor-dashboard-model.ts";
 import { truncateText } from "../goal-core.ts";
 import { DEFAULT_GOAL_KEYBINDINGS, formatGoalKeybinding, type GoalDashboardKeybindings } from "../goal-settings.ts";
 
@@ -612,8 +613,9 @@ const CHECK_COLOR = { passed: "success", running: "accent", pending: "muted", fa
 /**
  * Structured audit dashboard (§15.3): five check stages, a progress bar, and
  * the elapsed duration, using the same visual system as the goal dashboard.
- * Raw tools and recent output appear only when showToolDetails is set
- * (expanded/debug audit mode) or when the audit finished with a failure.
+ * The running tool, its spend (tokens + cost) and recent output appear inline;
+ * tool args and raw output stay behind showToolDetails (expanded/debug) or a
+ * failed audit.
  */
 export function renderAuditorDashboard(
 	model: AuditorDashboardModel,
@@ -636,15 +638,19 @@ export function renderAuditorDashboard(
 	if (model.percentage !== undefined) {
 		const barWidth = Math.max(8, Math.min(inner - 12, 30));
 		const bar = progressBar(theme, model.percentage, barWidth);
-		lines.push(boxLine(theme, safeWidth, `${bar} ${theme.fg("muted", `${model.percentage}%`)}`));
+		const usage = model.usage ? `  ${formatAuditUsage(model.usage)}` : "";
+		lines.push(boxLine(theme, safeWidth, `${bar} ${theme.fg("muted", `${model.percentage}%${usage}`)}`));
+	}
+
+	// The running tool is live status, not diagnostics: always show it while the
+	// audit is active so a stalled audit is distinguishable from a busy one.
+	if (model.currentTool) {
+		const toolArgs = opts.showToolDetails === true && model.currentToolArgs ? ` ${dim(theme, truncateText(model.currentToolArgs, Math.max(10, inner - 20)))}` : "";
+		lines.push(boxLine(theme, safeWidth, `${accent(theme, "tool")} ${model.currentTool}${toolArgs}`));
 	}
 
 	const showDiagnostics = opts.showToolDetails === true || model.verdict === "disapproved" || model.verdict === "error";
 	if (showDiagnostics) {
-		if (model.currentTool) {
-			const args = model.currentToolArgs ? ` ${dim(theme, truncateText(model.currentToolArgs, Math.max(10, inner - 20)))}` : "";
-			lines.push(boxLine(theme, safeWidth, `${accent(theme, "tool")} ${model.currentTool}${args}`));
-		}
 		if (model.recentOutput.length > 0) {
 			lines.push(boxLine(theme, safeWidth, dim(theme, "─".repeat(Math.max(4, inner - 8)))));
 			for (const output of model.recentOutput.slice(0, 3)) {

@@ -31,6 +31,8 @@ export interface AuditorDashboardModel {
 	currentTool?: string;
 	currentToolArgs?: string;
 	recentOutput: string[];
+	/** Cumulative auditor spend so far (tokens + cost). */
+	usage?: { tokens: number; cost: number };
 	/** Result verdict when the audit finished (drives the result card). */
 	verdict?: AuditVerdict | null;
 	/** Whether the audit session is still running (false when phase === done). */
@@ -93,6 +95,7 @@ export function deriveAuditorDashboardModel(
 		currentTool: progress.currentTool,
 		currentToolArgs: progress.currentToolArgs,
 		recentOutput: progress.recentOutput,
+		...(progress.usage ? { usage: progress.usage } : {}),
 		...(verdict ? { verdict } : {}),
 		active: !done,
 	};
@@ -121,6 +124,12 @@ function clampPercentage(value: number | undefined): number {
 /** Human duration label for the audit header (reused formatter). */
 export function formatAuditElapsed(elapsedMs: number): string {
 	return formatDashboardDuration(Math.floor(elapsedMs / 1000));
+}
+
+/** Compact audit spend for the progress line, e.g. `47.2k tok · $0.041`. */
+export function formatAuditUsage(usage: { tokens: number; cost?: number }): string {
+	const tokens = usage.tokens >= 1000 ? `${(usage.tokens / 1000).toFixed(1)}k` : String(usage.tokens);
+	return usage.cost ? `${tokens} tok · $${usage.cost.toFixed(3)}` : `${tokens} tok`;
 }
 
 /**

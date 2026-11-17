@@ -35,6 +35,8 @@ export interface AuditorProgress {
 	label?: string;
 	/** Completion percentage from 0 to 100 */
 	percentage?: number;
+	/** Cumulative auditor spend so far (tokens + cost), from its own messages. */
+	usage?: { tokens: number; cost: number };
 }
 
 export type AuditorProgressCallback = (progress: AuditorProgress) => void;
@@ -317,6 +319,8 @@ export async function runGoalCompletionAuditor(args: {
 	const thinkingLevel = config.thinkingLevel;
 	const outputParts: string[] = [];
 	let outputTail: string[] = [];
+	let usageTokens = 0;
+	let usageCost = 0;
 	if (resolved.error) {
 		return { approved: false, disapproved: true, output: "", model: modelLabel(model), thinkingLevel, error: resolved.error };
 	}
@@ -410,8 +414,13 @@ export async function runGoalCompletionAuditor(args: {
 				return;
 			}
 			if (event.type !== "message_end") return;
-			const message = event.message as { role?: string; content?: Array<{ type?: string; text?: string }> };
+			const message = event.message as { role?: string; content?: Array<{ type?: string; text?: string }>; usage?: { totalTokens?: number; cost?: { total?: number } } };
 			if (message.role !== "assistant") return;
+			// Lives only here: the auditor session is in-memory, so its usage never
+			// reaches the parent session totals. Surface it through progress instead.
+			usageTokens += message.usage?.totalTokens ?? 0;
+			usageCost += message.usage?.cost?.total ?? 0;
+			if (message.usage) progress.usage = { tokens: usageTokens, cost: usageCost };
 			for (const part of message.content ?? []) {
 				if (part.type === "text" && typeof part.text === "string") {
 					outputParts.push(part.text);

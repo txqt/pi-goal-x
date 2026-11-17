@@ -4,6 +4,10 @@ All notable changes to pi-goal-x are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- Show the completion auditor's own spend (tokens and cost) on the audit dashboard progress line, and keep the running tool visible in the compact panel so a busy audit is distinguishable from a stalled one. The auditor runs in an in-memory session, so its usage never reached the parent session totals before.
+
 ## [0.34.1] — 2026-10-27
 
 Includes #118.

@@ -122,8 +122,8 @@ test("renderAuditorWidgetLines shows the structured audit dashboard (§15.3)", (
 	assert.ok(text.indexOf("Workspace inspection") < text.indexOf("Final decision"));
 	// Active audit footer.
 	assert.match(lines.at(-1) ?? "", /Esc: stop audit/);
-	// Tool + output details are hidden by default (shown only in expanded/debug).
-	assert.doesNotMatch(text, /tool read/);
+	// The live tool is always shown; args and output stay behind expansion.
+	assert.match(text, /tool read/);
 	assert.doesNotMatch(text, /checking file exists/);
 });
 
@@ -402,8 +402,8 @@ test("GoalWidgetComponent renders the audit dashboard when audit progress is pre
 	const text = lines.join("\n");
 	assert.match(text, /Independent completion audit/);
 	assert.match(text, /Objective and success criteria/);
-	// Tool details are hidden unless the dashboard is expanded (debug/audit mode).
-	assert.doesNotMatch(text, /tool read/);
+	// The running tool stays visible in the compact audit panel.
+	assert.match(text, /tool read/);
 });
 
 test("GoalWidgetComponent renders with disableTasks setting", () => {

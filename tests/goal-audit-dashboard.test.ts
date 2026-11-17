@@ -2,7 +2,8 @@
  * Audit dashboard tests (plan §19.7): the five check stages transition
  * pending → running → passed (decision → passed or failed), the auditor
  * identity is shown, percentages clamp, expanded diagnostics retain tool
- * details, the result cards render, and the normal dashboard returns after a
+ * details, the live spend (tokens + cost) accumulates on the progress line, the
+ * result cards render, and the normal dashboard returns after a
  * finished audit (rejection keeps the goal open; approval shows the card).
  */
 
@@ -14,6 +15,7 @@ import type { AuditorProgress } from "../extensions/goal-auditor.ts";
 import {
 	deriveAuditResultCard,
 	deriveAuditorDashboardModel,
+	formatAuditUsage,
 	type AuditCheck,
 } from "../extensions/widgets/auditor-dashboard-model.ts";
 import { renderAuditResultCard, renderAuditorDashboard } from "../extensions/widgets/goal-dashboard-renderer.ts";
@@ -98,15 +100,32 @@ test("percentage clamps to [0, 100]", () => {
 	assert.equal(over.percentage, 100);
 });
 
-test("expanded diagnostics retain tool details only when requested", () => {
+test("compact audit shows the running tool but hides args and output", () => {
 	const p = progress({ currentTool: "read", currentToolArgs: '{"path":"src/parser.ts"}', recentOutput: ["checking file exists..."] });
 	const compact = renderAuditorDashboard(deriveAuditorDashboardModel(p), theme, 100).join("\n");
-	assert.doesNotMatch(compact, /tool read/);
+	assert.match(compact, /tool read/, "live tool visible without expanding");
+	assert.doesNotMatch(compact, /src\/parser\.ts/);
 	assert.doesNotMatch(compact, /checking file exists/);
 	const expanded = renderAuditorDashboard(deriveAuditorDashboardModel(p), theme, 100, { showToolDetails: true }).join("\n");
 	assert.match(expanded, /tool read/);
 	assert.match(expanded, /src\/parser\.ts/);
 	assert.match(expanded, /checking file exists/);
+});
+
+test("auditor spend appears on the progress line as usage accumulates", () => {
+	assert.equal(formatAuditUsage({ tokens: 47200, cost: 0.041 }), "47.2k tok · $0.041");
+	assert.equal(formatAuditUsage({ tokens: 900 }), "900 tok");
+
+	const p = progress({ percentage: 75, usage: { tokens: 47200, cost: 0.041 } });
+	const model = deriveAuditorDashboardModel(p);
+	assert.deepEqual(model.usage, { tokens: 47200, cost: 0.041 });
+	const text = renderAuditorDashboard(model, theme, 100).join("\n");
+	assert.match(text, /75%/);
+	assert.match(text, /47\.2k tok · \$0\.041/);
+
+	// No usage yet (no message finished): the progress line stays unchanged.
+	const bare = renderAuditorDashboard(deriveAuditorDashboardModel(progress({ percentage: 25 })), theme, 100).join("\n");
+	assert.doesNotMatch(bare, /tok/);
 });
 
 test("failed audits show diagnostics automatically", () => {
